@@ -1,0 +1,16 @@
+package com.communityappbackend.DTO;
+
+import lombok.*;
+
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class SignUpRequest {
+    private String fullName;
+    private String email;
+    private String phone;
+    private String password;   // plain text from client
+    private String address;
+}
