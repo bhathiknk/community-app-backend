@@ -50,6 +50,7 @@ public class SecurityConfig {
 
                         // Allow auth APIs (signup/login) without token
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/user/**").authenticated()
 
                         // All other requests need JWT
                         .anyRequest().authenticated()

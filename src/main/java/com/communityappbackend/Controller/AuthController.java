@@ -2,6 +2,7 @@ package com.communityappbackend.Controller;
 
 
 import com.communityappbackend.DTO.AuthResponse;
+import com.communityappbackend.DTO.SignInRequest;
 import com.communityappbackend.DTO.SignUpRequest;
 import com.communityappbackend.Model.User;
 import com.communityappbackend.Security.JwtUtils;
@@ -38,6 +39,23 @@ public class AuthController {
         String token = jwtUtils.generateToken(user.getUserId());
         return AuthResponse.builder()
                 .message("User created successfully")
+                .token(token)
+                .build();
+    }
+
+
+    @PostMapping("/signin")
+    public AuthResponse signIn(@RequestBody SignInRequest request) {
+        User user = userService.findByEmail(request.getEmail());
+
+        if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+            throw new BadCredentialsException("Invalid email or password");
+        }
+
+        String token = jwtUtils.generateToken(user.getUserId());
+
+        return AuthResponse.builder()
+                .message("Login successful")
                 .token(token)
                 .build();
     }
