@@ -9,6 +9,7 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 public class ItemResponse {
+
     private String itemId;
     private String title;
     private String description;
@@ -16,6 +17,12 @@ public class ItemResponse {
     private Long categoryId;
     private List<String> images;
 
-    private String status;   // new: show item status
-    private String createdAt; // new: string form of timestamp
+    private String status;
+    private String createdAt;
+
+    // NEW: Owner info
+    private String ownerFullName;
+    private String ownerEmail;
+    private String ownerPhone;
+    private String ownerAddress;
 }

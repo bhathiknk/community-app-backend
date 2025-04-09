@@ -69,24 +69,6 @@ public class ItemService {
                 .collect(Collectors.toList());
     }
 
-    // NEW: get all active items from other users, optionally filter by category
-    public List<ItemResponse> getAllActiveExceptUser(Authentication auth, Long categoryId) {
-        User user = (User) auth.getPrincipal();
-        String currentUserId = user.getUserId();
-
-        // fetch all items that are status=ACTIVE, NOT the current user
-        // optionally filter by category if categoryId != null
-        List<Item> items;
-        if (categoryId != null) {
-            items = itemRepo.findByStatusAndOwnerIdNotAndCategoryId("ACTIVE", currentUserId, categoryId);
-        } else {
-            items = itemRepo.findByStatusAndOwnerIdNot("ACTIVE", currentUserId);
-        }
-
-        return items.stream()
-                .map(this::toItemResponse)
-                .collect(Collectors.toList());
-    }
 
     private ItemResponse toItemResponse(Item item) {
         List<String> imageUrls = item.getImages().stream()
@@ -133,4 +115,15 @@ public class ItemService {
             throw new RuntimeException("Failed to save file: " + e.getMessage(), e);
         }
     }
+
+    public ItemResponse getItemDetails(String itemId) {
+        // Attempt to find item by ID
+        Optional<Item> itemOpt = itemRepo.findById(itemId);
+        if (itemOpt.isEmpty()) {
+            return null; // or throw a custom NotFoundException
+        }
+        // Convert to ItemResponse
+        return toItemResponse(itemOpt.get());
+    }
+
 }

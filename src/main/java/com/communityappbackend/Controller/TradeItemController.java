@@ -1,7 +1,9 @@
 package com.communityappbackend.Controller;
 
 import com.communityappbackend.DTO.ItemResponse;
-import com.communityappbackend.Service.ItemService;
+import com.communityappbackend.Service.TradeItemService;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -11,10 +13,10 @@ import java.util.List;
 @RequestMapping("/api/trade")
 public class TradeItemController {
 
-    private final ItemService itemService;
+    private final TradeItemService tradeItemService;
 
-    public TradeItemController(ItemService itemService) {
-        this.itemService = itemService;
+    public TradeItemController(TradeItemService tradeItemService) {
+        this.tradeItemService = tradeItemService;
     }
 
     // GET /api/trade?categoryId={optional}
@@ -23,6 +25,18 @@ public class TradeItemController {
             @RequestParam(required = false) Long categoryId,
             Authentication auth
     ) {
-        return itemService.getAllActiveExceptUser(auth, categoryId);
+        return tradeItemService.getAllActiveExceptUser(auth, categoryId);
+    }
+
+    // GET /api/trade/details/{itemId}
+    @GetMapping("/details/{itemId}")
+    public ResponseEntity<ItemResponse> getItemDetails(
+            @PathVariable String itemId
+    ) {
+        ItemResponse item = tradeItemService.getItemDetails(itemId);
+        if (item == null) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+        return ResponseEntity.ok(item);
     }
 }
