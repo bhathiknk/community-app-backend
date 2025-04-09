@@ -2,6 +2,7 @@ package com.communityappbackend.Model;
 
 import jakarta.persistence.*;
 import lombok.*;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -25,6 +26,15 @@ public class Item {
 
     private Long categoryId;
     private String ownerId; // user_id from JWT
+
+    // New column: status
+    @Builder.Default
+    private String status = "ACTIVE"; // default is ACTIVE
+
+    // New column: created_at from DB
+    @Column(name = "created_at", columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+            insertable = false, updatable = false)
+    private Timestamp createdAt;
 
     @OneToMany(mappedBy = "item", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default

@@ -15,4 +15,7 @@ public class ItemResponse {
     private Double price;
     private Long categoryId;
     private List<String> images;
+
+    private String status;   // new: show item status
+    private String createdAt; // new: string form of timestamp
 }
