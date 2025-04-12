@@ -67,4 +67,10 @@ public class ItemController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
+
+    // NEW: GET /api/items/user/{userId} => fetch that user's items
+    @GetMapping("/user/{userId}")
+    public List<ItemResponse> getItemsByUserId(@PathVariable String userId) {
+        return itemService.getItemsByOwner(userId);
+    }
 }

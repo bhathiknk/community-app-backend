@@ -13,4 +13,7 @@ public interface ItemRepository extends JpaRepository<Item, String> {
 
     // new: same but with category
     List<Item> findByStatusAndOwnerIdNotAndCategoryId(String status, String ownerId, Long categoryId);
+
+
+
 }

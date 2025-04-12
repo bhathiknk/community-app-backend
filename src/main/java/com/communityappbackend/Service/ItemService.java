@@ -126,4 +126,13 @@ public class ItemService {
         return toItemResponse(itemOpt.get());
     }
 
+    // NEW: Return items by owner
+    public List<ItemResponse> getItemsByOwner(String userId) {
+        List<Item> items = itemRepo.findByOwnerId(userId);
+        return items.stream()
+                .map(this::toItemResponse) // convert each to a response
+                .collect(Collectors.toList());
+    }
+
+
 }
