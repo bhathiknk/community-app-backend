@@ -57,6 +57,8 @@ public class SecurityConfig {
 
 
 
+
+
                         // All other requests need JWT
                         .anyRequest().authenticated()
                 )
