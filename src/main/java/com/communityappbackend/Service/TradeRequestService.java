@@ -50,14 +50,16 @@ public class TradeRequestService {
         User user = (User) auth.getPrincipal();
         String currentUserId = user.getUserId();
         List<Item> myItems = itemRepo.findByOwnerId(currentUserId);
-        Set<String> myItemIds = myItems.stream().map(Item::getItemId).collect(Collectors.toSet());
+        Set<String> myItemIds = myItems.stream()
+                .map(Item::getItemId)
+                .collect(Collectors.toSet());
         List<TradeRequest> allRequests = tradeRequestRepo.findAll();
         return allRequests.stream()
                 .filter(r -> myItemIds.contains(r.getItemId()))
                 .collect(Collectors.toList());
     }
 
-    // 3) Approve a request, then create a notification for the sender.
+    // 3) Approve a request and notify the sender.
     public TradeRequest approveRequest(String requestId, String selectedItemId, Authentication auth) {
         Optional<TradeRequest> opt = tradeRequestRepo.findById(requestId);
         if (opt.isEmpty()) {
@@ -70,6 +72,7 @@ public class TradeRequestService {
         req.setReceiverSelectedItemId(selectedItemId);
         req.setStatus("ACCEPTED");
         TradeRequest updated = tradeRequestRepo.save(req);
+        // Notify sender
         User sender = userRepo.findById(req.getOfferedBy()).orElse(null);
         String senderName = (sender != null) ? sender.getFullName() : "Sender";
         String message = senderName + ", your trade request has been accepted!";
@@ -77,7 +80,7 @@ public class TradeRequestService {
         return updated;
     }
 
-    // 4) Reject a request, then create a notification for the sender.
+    // 4) Reject a request and notify the sender.
     public TradeRequest rejectRequest(String requestId, Authentication auth) {
         Optional<TradeRequest> opt = tradeRequestRepo.findById(requestId);
         if (opt.isEmpty()) {
@@ -89,6 +92,7 @@ public class TradeRequestService {
         }
         req.setStatus("REJECTED");
         TradeRequest updated = tradeRequestRepo.save(req);
+        // Notify sender
         User sender = userRepo.findById(req.getOfferedBy()).orElse(null);
         String senderName = (sender != null) ? sender.getFullName() : "Sender";
         String message = senderName + ", your trade request has been rejected.";
@@ -96,11 +100,14 @@ public class TradeRequestService {
         return updated;
     }
 
-    // 5) Get detailed incoming requests for items the current user owns with an optional status filter.
+    // 5) Get detailed incoming requests for items the current user owns.
+    // Optionally, you can allow filtering by status (e.g. "PENDING", "ACCEPTED", "REJECTED")
     public List<TradeRequestDetailedDTO> getIncomingRequestsDetailed(Authentication auth, String status) {
         User me = (User) auth.getPrincipal();
         List<Item> myItems = itemRepo.findByOwnerId(me.getUserId());
-        Set<String> myItemIds = myItems.stream().map(Item::getItemId).collect(Collectors.toSet());
+        Set<String> myItemIds = myItems.stream()
+                .map(Item::getItemId)
+                .collect(Collectors.toSet());
         List<TradeRequest> allRequests = tradeRequestRepo.findAll();
         List<TradeRequest> incomingForMe = allRequests.stream()
                 .filter(r -> myItemIds.contains(r.getItemId()))
@@ -116,6 +123,9 @@ public class TradeRequestService {
     private TradeRequestDetailedDTO toDetailedDTO(TradeRequest req) {
         User sender = userRepo.findById(req.getOfferedBy()).orElse(null);
         String offeredByName = (sender != null) ? sender.getFullName() : "Unknown User";
+        String senderEmail = (sender != null) ? sender.getEmail() : "";
+        String senderPhone = (sender != null) ? sender.getPhone() : "";
+        String senderAddress = (sender != null) ? sender.getAddress() : "";
 
         Item requestedItem = itemRepo.findById(req.getItemId()).orElse(null);
         String requestedTitle = (requestedItem != null) ? requestedItem.getTitle() : "Unknown Item";
@@ -125,6 +135,25 @@ public class TradeRequestService {
                 ? mapImagesToPaths(requestedItem.getImages())
                 : Collections.emptyList();
 
+        // Get receiver info from the requested item's owner
+        User receiver = null;
+        String receiverUserId = "";
+        String receiverFullName = "";
+        String receiverEmail = "";
+        String receiverPhone = "";
+        String receiverAddress = "";
+        if (requestedItem != null) {
+            receiver = userRepo.findById(requestedItem.getOwnerId()).orElse(null);
+            if (receiver != null) {
+                receiverUserId = receiver.getUserId();
+                receiverFullName = receiver.getFullName();
+                receiverEmail = receiver.getEmail();
+                receiverPhone = receiver.getPhone();
+                receiverAddress = receiver.getAddress();
+            }
+        }
+
+        // Offered item details
         Item offeredItem = null;
         String offeredItemTitle = null;
         String offeredItemDescription = null;
@@ -157,10 +186,21 @@ public class TradeRequestService {
                 .offeredItemDescription(offeredItemDescription)
                 .offeredItemPrice(offeredItemPrice)
                 .offeredItemImages(offeredItemImages)
+                // Set contact information
+                .senderEmail(senderEmail)
+                .senderPhone(senderPhone)
+                .senderAddress(senderAddress)
+                .receiverUserId(receiverUserId)
+                .receiverFullName(receiverFullName)
+                .receiverEmail(receiverEmail)
+                .receiverPhone(receiverPhone)
+                .receiverAddress(receiverAddress)
                 .build();
     }
 
-    // Map item images to full URLs.
+
+
+    // Map images to URLs.
     private List<String> mapImagesToPaths(List<ItemImage> images) {
         if (images == null) return Collections.emptyList();
         return images.stream()

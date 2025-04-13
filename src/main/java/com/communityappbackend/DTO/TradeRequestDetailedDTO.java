@@ -30,4 +30,16 @@ public class TradeRequestDetailedDTO {
     private String offeredItemDescription;
     private Double offeredItemPrice;
     private List<String> offeredItemImages;
+
+    // NEW: Sender contact info
+    private String senderEmail;
+    private String senderPhone;
+    private String senderAddress;
+
+    // NEW: Receiver contact info
+    private String receiverUserId;
+    private String receiverFullName;
+    private String receiverEmail;
+    private String receiverPhone;
+    private String receiverAddress;
 }
