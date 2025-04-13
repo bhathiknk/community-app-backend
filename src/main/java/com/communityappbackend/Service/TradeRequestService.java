@@ -35,7 +35,6 @@ public class TradeRequestService {
     // 1) Create a trade request
     public TradeRequest createRequest(TradeRequestDTO dto, Authentication auth) {
         User user = (User) auth.getPrincipal();
-
         TradeRequest req = TradeRequest.builder()
                 .itemId(dto.getItemId())
                 .offeredBy(user.getUserId())
@@ -43,27 +42,22 @@ public class TradeRequestService {
                 .tradeType(dto.getTradeType() != null ? dto.getTradeType() : "MONEY")
                 .status("PENDING")
                 .build();
-
         return tradeRequestRepo.save(req);
     }
 
-    // 2) View all requests for items that I own
+    // 2) Get all requests for items the current user owns
     public List<TradeRequest> getIncomingRequests(Authentication auth) {
         User user = (User) auth.getPrincipal();
         String currentUserId = user.getUserId();
-
         List<Item> myItems = itemRepo.findByOwnerId(currentUserId);
-        Set<String> myItemIds = myItems.stream()
-                .map(Item::getItemId)
-                .collect(Collectors.toSet());
-
+        Set<String> myItemIds = myItems.stream().map(Item::getItemId).collect(Collectors.toSet());
         List<TradeRequest> allRequests = tradeRequestRepo.findAll();
         return allRequests.stream()
                 .filter(r -> myItemIds.contains(r.getItemId()))
                 .collect(Collectors.toList());
     }
 
-    // 3) Approve a request: update status to ACCEPTED and create a notification for the sender.
+    // 3) Approve a request, then create a notification for the sender.
     public TradeRequest approveRequest(String requestId, String selectedItemId, Authentication auth) {
         Optional<TradeRequest> opt = tradeRequestRepo.findById(requestId);
         if (opt.isEmpty()) {
@@ -73,22 +67,17 @@ public class TradeRequestService {
         if (!"PENDING".equals(req.getStatus())) {
             throw new RuntimeException("Request is not pending");
         }
-
         req.setReceiverSelectedItemId(selectedItemId);
         req.setStatus("ACCEPTED");
         TradeRequest updated = tradeRequestRepo.save(req);
-
-        // Create a notification for the sender about the approval.
         User sender = userRepo.findById(req.getOfferedBy()).orElse(null);
         String senderName = (sender != null) ? sender.getFullName() : "Sender";
         String message = senderName + ", your trade request has been accepted!";
-        // Create the notification for the sender.
         notificationService.createNotification(new NotificationDTO(req.getOfferedBy(), message));
-
         return updated;
     }
 
-    // 4) Reject request: update status to REJECTED and create a notification for the sender.
+    // 4) Reject a request, then create a notification for the sender.
     public TradeRequest rejectRequest(String requestId, Authentication auth) {
         Optional<TradeRequest> opt = tradeRequestRepo.findById(requestId);
         if (opt.isEmpty()) {
@@ -98,35 +87,30 @@ public class TradeRequestService {
         if (!"PENDING".equals(req.getStatus())) {
             throw new RuntimeException("Request is not pending");
         }
-
         req.setStatus("REJECTED");
         TradeRequest updated = tradeRequestRepo.save(req);
-
-        // Create a notification for the sender about the rejection.
         User sender = userRepo.findById(req.getOfferedBy()).orElse(null);
         String senderName = (sender != null) ? sender.getFullName() : "Sender";
         String message = senderName + ", your trade request has been rejected.";
         notificationService.createNotification(new NotificationDTO(req.getOfferedBy(), message));
-
         return updated;
     }
 
-    // 5) Return a detailed list of incoming requests for items that belong to the current user.
-    public List<TradeRequestDetailedDTO> getIncomingRequestsDetailed(Authentication auth) {
+    // 5) Get detailed incoming requests for items the current user owns with an optional status filter.
+    public List<TradeRequestDetailedDTO> getIncomingRequestsDetailed(Authentication auth, String status) {
         User me = (User) auth.getPrincipal();
         List<Item> myItems = itemRepo.findByOwnerId(me.getUserId());
-        Set<String> myItemIds = myItems.stream()
-                .map(Item::getItemId)
-                .collect(Collectors.toSet());
-
+        Set<String> myItemIds = myItems.stream().map(Item::getItemId).collect(Collectors.toSet());
         List<TradeRequest> allRequests = tradeRequestRepo.findAll();
         List<TradeRequest> incomingForMe = allRequests.stream()
                 .filter(r -> myItemIds.contains(r.getItemId()))
                 .collect(Collectors.toList());
-
-        return incomingForMe.stream()
-                .map(this::toDetailedDTO)
-                .collect(Collectors.toList());
+        if (status != null && !status.isEmpty()) {
+            incomingForMe = incomingForMe.stream()
+                    .filter(r -> r.getStatus().equalsIgnoreCase(status))
+                    .collect(Collectors.toList());
+        }
+        return incomingForMe.stream().map(this::toDetailedDTO).collect(Collectors.toList());
     }
 
     private TradeRequestDetailedDTO toDetailedDTO(TradeRequest req) {
@@ -146,7 +130,6 @@ public class TradeRequestService {
         String offeredItemDescription = null;
         Double offeredItemPrice = null;
         List<String> offeredItemImages = Collections.emptyList();
-
         if ("ITEM".equals(req.getTradeType()) && req.getReceiverSelectedItemId() != null) {
             offeredItem = itemRepo.findById(req.getReceiverSelectedItemId()).orElse(null);
             if (offeredItem != null) {
@@ -177,7 +160,7 @@ public class TradeRequestService {
                 .build();
     }
 
-    // Map images to full URLs.
+    // Map item images to full URLs.
     private List<String> mapImagesToPaths(List<ItemImage> images) {
         if (images == null) return Collections.emptyList();
         return images.stream()
@@ -188,12 +171,10 @@ public class TradeRequestService {
                 .collect(Collectors.toList());
     }
 
-    // Return all items (with full details) by owner.
+    // 6) Return items by owner.
     public List<ItemResponse> getItemsByOwner(String userId) {
         List<Item> items = itemRepo.findByOwnerId(userId);
-        return items.stream()
-                .map(this::toItemResponse)
-                .collect(Collectors.toList());
+        return items.stream().map(this::toItemResponse).collect(Collectors.toList());
     }
 
     private ItemResponse toItemResponse(Item item) {

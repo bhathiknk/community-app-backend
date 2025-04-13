@@ -59,21 +59,19 @@ public class TradeRequestController {
         return ResponseEntity.ok(updated);
     }
 
-    // 5) Get a "detailed" list of incoming requests (includes item titles, images, etc.)
+    // 5) Get a detailed list of incoming requests with optional filtering by status.
     @GetMapping("/incoming/detailed")
-    public List<TradeRequestDetailedDTO> getIncomingDetailed(Authentication auth) {
-        return tradeRequestService.getIncomingRequestsDetailed(auth);
+    public List<TradeRequestDetailedDTO> getIncomingDetailed(@RequestParam(required = false) String status,
+                                                             Authentication auth) {
+        return tradeRequestService.getIncomingRequestsDetailed(auth, status);
     }
 
-    // 6) NEW ENDPOINT: Get the sender's items (with full details) by senderUserId
-    //    This is what you'll call from Flutter to load the "offered_by" user's items.
+    // 6) Get the sender's items (public listings)
     @GetMapping("/sender/{userId}/items")
     public ResponseEntity<List<ItemResponse>> getItemsBySender(
             @PathVariable String userId,
             Authentication auth
     ) {
-        // You could add checks to ensure the user is authorized to see these, etc.
-        // But typically you'll just return them since they're public listings.
         List<ItemResponse> items = tradeRequestService.getItemsByOwner(userId);
         return ResponseEntity.ok(items);
     }

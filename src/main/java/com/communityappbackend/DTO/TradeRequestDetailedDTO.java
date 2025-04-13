@@ -20,15 +20,14 @@ public class TradeRequestDetailedDTO {
     // The item that belongs to the current user (the requested item)
     private String requestedItemId;
     private String requestedItemTitle;
-    private String requestedItemDescription;  // NEW
-    private Double requestedItemPrice;        // NEW
-    private List<String> requestedItemImages; // short version of item images
+    private String requestedItemDescription;
+    private Double requestedItemPrice;
+    private List<String> requestedItemImages;
 
-    // If user offered an item instead of money, details of that item:
-    // This is typically stored in `receiverSelectedItemId` after approval.
+    // Offered item details (if applicable)
     private String offeredItemId;
     private String offeredItemTitle;
-    private String offeredItemDescription;   // NEW
-    private Double offeredItemPrice;         // NEW
-    private List<String> offeredItemImages;  // NEW
+    private String offeredItemDescription;
+    private Double offeredItemPrice;
+    private List<String> offeredItemImages;
 }
