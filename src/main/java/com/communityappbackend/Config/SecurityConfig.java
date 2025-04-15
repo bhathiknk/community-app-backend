@@ -1,7 +1,7 @@
 package com.communityappbackend.Config;
 
 
-import com.communityappbackend.Security.JwtAuthFilter;
+import com.communityappbackend.security.JwtAuthFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.*;
@@ -24,7 +24,6 @@ public class SecurityConfig {
 
     @Bean
     public AuthenticationManager authManager(HttpSecurity http) throws Exception {
-        // This allows us to wire the AuthenticationManager in other places
         return http.getSharedObject(AuthenticationManagerBuilder.class).build();
     }
 
@@ -59,11 +58,6 @@ public class SecurityConfig {
                         .requestMatchers("/uploadProfileImage", "/getProfileImage").authenticated()
 
                         .requestMatchers("/image/{fileName}/**").permitAll()
-
-
-
-
-
 
                         // All other requests need JWT
                         .anyRequest().authenticated()
