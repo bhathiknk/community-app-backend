@@ -2,6 +2,7 @@ package com.communityappbackend.dto;
 
 import lombok.*;
 
+/** Request object for sign-up/registration. */
 @Getter
 @Setter
 @NoArgsConstructor
@@ -11,7 +12,7 @@ public class SignUpRequest {
     private String fullName;
     private String email;
     private String phone;
-    private String password;   // plain text from client
+    private String password;
     private String address;
 
     // NEW: city and province

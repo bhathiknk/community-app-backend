@@ -11,6 +11,9 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * Manages creation and handling of trade requests for user items.
+ */
 @RestController
 @RequestMapping("/api/trade/requests")
 public class TradeRequestController {
@@ -21,7 +24,9 @@ public class TradeRequestController {
         this.tradeRequestService = tradeRequestService;
     }
 
-    // 1) Create a new request
+    /**
+     * Creates a new trade request (money or item-based).
+     */
     @PostMapping
     public ResponseEntity<TradeRequest> createRequest(
             @RequestBody TradeRequestDTO dto,
@@ -31,14 +36,18 @@ public class TradeRequestController {
         return ResponseEntity.ok(req);
     }
 
-    // 2) View all requests for items that I own
+    /**
+     * Returns all incoming trade requests (for items owned by the authenticated user).
+     */
     @GetMapping("/incoming")
-    public ResponseEntity<List<TradeRequest>> getIncoming(Authentication auth) {
+    public ResponseEntity<List<TradeRequest>> getIncomingRequests(Authentication auth) {
         List<TradeRequest> requests = tradeRequestService.getIncomingRequests(auth);
         return ResponseEntity.ok(requests);
     }
 
-    // 3) Approve a request (picking an item from the sender)
+    /**
+     * Approves a request, optionally selecting an item from the sender.
+     */
     @PostMapping("/{requestId}/approve")
     public ResponseEntity<TradeRequest> approveRequest(
             @PathVariable String requestId,
@@ -49,7 +58,9 @@ public class TradeRequestController {
         return ResponseEntity.ok(updated);
     }
 
-    // 4) Reject a request
+    /**
+     * Rejects a request.
+     */
     @PostMapping("/{requestId}/reject")
     public ResponseEntity<TradeRequest> rejectRequest(
             @PathVariable String requestId,
@@ -59,14 +70,21 @@ public class TradeRequestController {
         return ResponseEntity.ok(updated);
     }
 
-    // 5) Get a detailed list of incoming requests with optional filtering by status.
+    /**
+     * Returns a detailed list of incoming requests for the current user's items,
+     * with optional filtering by status.
+     */
     @GetMapping("/incoming/detailed")
-    public List<TradeRequestDetailedDTO> getIncomingDetailed(@RequestParam(required = false) String status,
-                                                             Authentication auth) {
+    public List<TradeRequestDetailedDTO> getIncomingDetailed(
+            @RequestParam(required = false) String status,
+            Authentication auth
+    ) {
         return tradeRequestService.getIncomingRequestsDetailed(auth, status);
     }
 
-    // 6) Get the sender's items (public listings)
+    /**
+     * Gets the sender's publicly listed items (by userId).
+     */
     @GetMapping("/sender/{userId}/items")
     public ResponseEntity<List<ItemResponse>> getItemsBySender(
             @PathVariable String userId,

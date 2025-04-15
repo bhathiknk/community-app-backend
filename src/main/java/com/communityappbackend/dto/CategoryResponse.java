@@ -2,6 +2,9 @@ package com.communityappbackend.dto;
 
 import lombok.*;
 
+/**
+ * Response object representing a category.
+ */
 @Getter
 @Setter
 @NoArgsConstructor

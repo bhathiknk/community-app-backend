@@ -1,5 +1,4 @@
-package com.communityappbackend.Config;
-
+package com.communityappbackend.config;
 
 import com.communityappbackend.security.JwtAuthFilter;
 import org.springframework.context.annotation.Bean;
@@ -12,6 +11,9 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+/**
+ * Configures Spring Security, including JWT authentication.
+ */
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
@@ -34,6 +36,7 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+
         http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
@@ -49,22 +52,23 @@ public class SecurityConfig {
 
                         // Allow auth APIs (signup/login) without token
                         .requestMatchers("/api/auth/**").permitAll()
+
+                        // We require authentication for certain endpoints
                         .requestMatchers("/api/user/**").authenticated()
                         .requestMatchers("/api/items/image/**").permitAll()
                         .requestMatchers("/api/items/**").authenticated()
 
                         .requestMatchers("/ProfileImages/**").permitAll()
-                        // Profile image endpoints require authentication
                         .requestMatchers("/uploadProfileImage", "/getProfileImage").authenticated()
 
                         .requestMatchers("/image/{fileName}/**").permitAll()
 
-                        // All other requests need JWT
+                        // Everything else must be authenticated
                         .anyRequest().authenticated()
                 )
+                // Insert JWT filter
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
-
 }

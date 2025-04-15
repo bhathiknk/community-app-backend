@@ -6,6 +6,7 @@ import io.jsonwebtoken.ExpiredJwtException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.*;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.authentication.*;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
@@ -32,23 +33,19 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         try {
             String token = parseJwt(request);
             if (token != null && jwtUtils.validateToken(token)) {
-                // Get user from token
                 String userId = jwtUtils.getUserIdFromToken(token);
                 User user = userRepository.findById(userId).orElse(null);
 
                 if (user != null) {
-                    // Here you could create a UsernamePasswordAuthenticationToken
-                    // For this minimal approach, we won't set roles
                     UsernamePasswordAuthenticationToken authToken =
                             new UsernamePasswordAuthenticationToken(user, null, null);
-
                     SecurityContextHolder.getContext().setAuthentication(authToken);
                 }
             }
         } catch (ExpiredJwtException e) {
-            // Token expired, handle as needed
+            // Token expired
         } catch (Exception e) {
-            // Token invalid, handle as needed
+            // Token invalid
         }
         filterChain.doFilter(request, response);
     }

@@ -9,6 +9,10 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * Handles listing all active tradeable items except from the current user,
+ * as well as item detail retrieval.
+ */
 @RestController
 @RequestMapping("/api/trade")
 public class TradeItemController {
@@ -19,7 +23,9 @@ public class TradeItemController {
         this.tradeItemService = tradeItemService;
     }
 
-    // GET /api/trade?categoryId={optional}
+    /**
+     * Gets all active items from other users, optionally filtered by category.
+     */
     @GetMapping
     public List<ItemResponse> getAllActiveExceptUser(
             @RequestParam(required = false) Long categoryId,
@@ -28,11 +34,11 @@ public class TradeItemController {
         return tradeItemService.getAllActiveExceptUser(auth, categoryId);
     }
 
-    // GET /api/trade/details/{itemId}
+    /**
+     * Fetches detailed info about a specific item.
+     */
     @GetMapping("/details/{itemId}")
-    public ResponseEntity<ItemResponse> getItemDetails(
-            @PathVariable String itemId
-    ) {
+    public ResponseEntity<ItemResponse> getItemDetails(@PathVariable String itemId) {
         ItemResponse item = tradeItemService.getItemDetails(itemId);
         if (item == null) {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);

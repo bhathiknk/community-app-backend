@@ -43,7 +43,6 @@ public class JwtUtils {
             Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token);
             return true;
         } catch (JwtException ex) {
-            // ex: ExpiredJwtException, MalformedJwtException etc.
             return false;
         }
     }

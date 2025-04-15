@@ -1,9 +1,10 @@
 package com.communityappbackend.service;
 
+import com.communityappbackend.exception.UserNotFoundException;
 import com.communityappbackend.model.User;
 import com.communityappbackend.model.UserProfileImage;
-import com.communityappbackend.repository.UserRepository;
 import com.communityappbackend.repository.UserProfileImageRepository;
+import com.communityappbackend.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -14,6 +15,9 @@ import java.io.IOException;
 import java.nio.file.*;
 import java.util.UUID;
 
+/**
+ * Handles logic for uploading and retrieving user profile images.
+ */
 @Service
 public class ProfileImageService {
 
@@ -33,7 +37,7 @@ public class ProfileImageService {
 
         File uploadDir = new File(UPLOAD_DIR);
         if (!uploadDir.exists() && !uploadDir.mkdirs()) {
-            throw new IOException("Could not create upload directory");
+            throw new IOException("Could not create upload directory: " + UPLOAD_DIR);
         }
 
         String originalFileName = file.getOriginalFilename();
@@ -41,7 +45,6 @@ public class ProfileImageService {
             throw new IllegalArgumentException("File must have a name!");
         }
 
-        // Clean up the file name
         originalFileName = originalFileName.replace("\\", "/");
         if (originalFileName.contains("/")) {
             originalFileName = originalFileName.substring(originalFileName.lastIndexOf("/") + 1);
@@ -54,23 +57,19 @@ public class ProfileImageService {
         Files.copy(file.getInputStream(), destinationPath, StandardCopyOption.REPLACE_EXISTING);
 
         // Ensure user exists
-        User user = userRepository.findById(userId).orElse(null);
-        if (user == null) {
-            throw new IllegalArgumentException("User not found!");
-        }
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("User not found: " + userId));
 
         // Fetch existing profile image record (if any)
-        UserProfileImage profileImage =
-                userProfileImageRepository.findByUserId(userId).orElse(null);
+        UserProfileImage profileImage = userProfileImageRepository.findByUserId(userId).orElse(null);
         if (profileImage != null && profileImage.getImagePath() != null) {
-            // Delete the old file
+            // Delete old file
             Path oldFilePath = Paths.get(UPLOAD_DIR, profileImage.getImagePath()).normalize();
             File oldFile = oldFilePath.toFile();
             if (oldFile.exists()) {
                 oldFile.delete();
             }
         } else {
-            // If no record yet, create one
             if (profileImage == null) {
                 profileImage = new UserProfileImage();
                 profileImage.setUserId(userId);
@@ -85,8 +84,7 @@ public class ProfileImageService {
     }
 
     public String getProfileImage(String userId) {
-        UserProfileImage profileImage =
-                userProfileImageRepository.findByUserId(userId).orElse(null);
+        UserProfileImage profileImage = userProfileImageRepository.findByUserId(userId).orElse(null);
         if (profileImage != null && profileImage.getImagePath() != null) {
             return profileImage.getImagePath();
         }

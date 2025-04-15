@@ -1,15 +1,19 @@
 package com.communityappbackend.service;
 
 import com.communityappbackend.dto.NotificationDTO;
+import com.communityappbackend.exception.NotificationNotFoundException;
 import com.communityappbackend.model.Notification;
 import com.communityappbackend.repository.NotificationRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Optional;
 
+/**
+ * Handles logic for creating and reading notifications.
+ */
 @Service
 public class NotificationService {
+
     private final NotificationRepository notificationRepo;
 
     public NotificationService(NotificationRepository notificationRepo) {
@@ -30,16 +34,16 @@ public class NotificationService {
     }
 
     public Notification updateNotificationReadStatus(String notificationId, boolean read) {
-        Optional<Notification> opt = notificationRepo.findById(notificationId);
-        if (opt.isPresent()) {
-            Notification notification = opt.get();
-            notification.setRead(read);
-            return notificationRepo.save(notification);
-        }
-        throw new RuntimeException("Notification not found");
+        Notification notification = notificationRepo.findById(notificationId)
+                .orElseThrow(() -> new NotificationNotFoundException("Notification not found: " + notificationId));
+        notification.setRead(read);
+        return notificationRepo.save(notification);
     }
 
     public void deleteNotification(String notificationId) {
+        if (!notificationRepo.existsById(notificationId)) {
+            throw new NotificationNotFoundException("Notification not found: " + notificationId);
+        }
         notificationRepo.deleteById(notificationId);
     }
 }

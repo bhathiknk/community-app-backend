@@ -7,6 +7,9 @@ import com.communityappbackend.service.UserService;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+/**
+ * Manages user profile retrieval and updates.
+ */
 @RestController
 @RequestMapping("/api/user")
 public class UserController {
@@ -17,6 +20,9 @@ public class UserController {
         this.userService = userService;
     }
 
+    /**
+     * Returns the currently authenticated user's profile.
+     */
     @GetMapping("/profile")
     public UserResponseDTO getProfile(Authentication authentication) {
         User loggedUser = (User) authentication.getPrincipal();
@@ -26,21 +32,20 @@ public class UserController {
                 .email(loggedUser.getEmail())
                 .phone(loggedUser.getPhone())
                 .address(loggedUser.getAddress())
-                .city(loggedUser.getCity())      // include city
-                .province(loggedUser.getProvince()) // include province
+                .city(loggedUser.getCity())
+                .province(loggedUser.getProvince())
                 .build();
     }
 
-
-    // method to update user profile fields
+    /**
+     * Updates the authenticated user's profile fields.
+     */
     @PutMapping("/profile/update")
     public UserResponseDTO updateProfile(Authentication authentication,
                                          @RequestBody UpdateUserProfileRequestDTO req) {
         User loggedUser = (User) authentication.getPrincipal();
-        // Service updates the fields
         User updated = userService.updateUserProfile(loggedUser.getUserId(), req);
 
-        // Return the updated user as a response
         return UserResponseDTO.builder()
                 .fullName(updated.getFullName())
                 .email(updated.getEmail())

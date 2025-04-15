@@ -1,6 +1,5 @@
 package com.communityappbackend.controller;
 
-
 import com.communityappbackend.dto.AuthResponse;
 import com.communityappbackend.dto.SignInRequest;
 import com.communityappbackend.dto.SignUpRequest;
@@ -12,6 +11,9 @@ import org.springframework.security.authentication.*;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
+/**
+ * Manages user registration and login.
+ */
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
@@ -32,18 +34,23 @@ public class AuthController {
         this.passwordEncoder = passwordEncoder;
     }
 
-    // ========== SIGN UP ==========
+    /**
+     * Creates a new user account.
+     */
     @PostMapping("/signup")
     public AuthResponse signUp(@RequestBody SignUpRequest request) {
         User user = userService.signUp(request);
         String token = jwtUtils.generateToken(user.getUserId());
+
         return AuthResponse.builder()
                 .message("User created successfully")
                 .token(token)
                 .build();
     }
 
-
+    /**
+     * Authenticates a user and returns a JWT.
+     */
     @PostMapping("/signin")
     public AuthResponse signIn(@RequestBody SignInRequest request) {
         User user = userService.findByEmail(request.getEmail());
@@ -59,6 +66,4 @@ public class AuthController {
                 .token(token)
                 .build();
     }
-
-
 }

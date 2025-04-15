@@ -7,6 +7,9 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * Handles CRUD operations on item categories.
+ */
 @RestController
 @RequestMapping("/api/categories")
 public class CategoryController {
@@ -17,13 +20,19 @@ public class CategoryController {
         this.categoryService = categoryService;
     }
 
+    /**
+     * Fetch all categories.
+     */
     @GetMapping
-    public List<CategoryResponse> getAll() {
+    public List<CategoryResponse> getAllCategories() {
         return categoryService.getAllCategories();
     }
 
+    /**
+     * Create a new category.
+     */
     @PostMapping
-    public CategoryResponse add(@RequestBody CategoryRequest request) {
+    public CategoryResponse addCategory(@RequestBody CategoryRequest request) {
         return categoryService.addCategory(request);
     }
 }

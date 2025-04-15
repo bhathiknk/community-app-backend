@@ -2,14 +2,17 @@ package com.communityappbackend.controller;
 
 import com.communityappbackend.dto.NotificationDTO;
 import com.communityappbackend.model.Notification;
-import com.communityappbackend.service.NotificationService;
 import com.communityappbackend.model.User;
+import com.communityappbackend.service.NotificationService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * Handles user notifications.
+ */
 @RestController
 @RequestMapping("/api/notifications")
 public class NotificationController {
@@ -20,36 +23,46 @@ public class NotificationController {
         this.notificationService = notificationService;
     }
 
-    // Create a new notification (for system internal use)
+    /**
+     * System-internal endpoint to create a notification.
+     */
     @PostMapping
     public ResponseEntity<Notification> createNotification(@RequestBody NotificationDTO dto){
         Notification notification = notificationService.createNotification(dto);
         return ResponseEntity.ok(notification);
     }
 
-    // Get notifications for the currently authenticated user using JWT
+    /**
+     * Returns all notifications for the authenticated user.
+     */
     @GetMapping("/me")
     public ResponseEntity<List<Notification>> getMyNotifications(Authentication auth) {
-        // Extract the current authenticated user
         User currentUser = (User) auth.getPrincipal();
         List<Notification> notifications = notificationService.getNotificationsByUserId(currentUser.getUserId());
         return ResponseEntity.ok(notifications);
     }
 
-    // Update notification read/unread status
+    /**
+     * Marks a notification as read/unread.
+     */
     @PutMapping("/{notificationId}/read")
-    public ResponseEntity<Notification> updateNotificationReadStatus(@PathVariable String notificationId,
-                                                                     @RequestParam boolean read,
-                                                                     Authentication auth) {
-        // Optionally, you should check that the notification belongs to the current user.
+    public ResponseEntity<Notification> updateNotificationReadStatus(
+            @PathVariable String notificationId,
+            @RequestParam boolean read,
+            Authentication auth
+    ) {
         Notification updated = notificationService.updateNotificationReadStatus(notificationId, read);
         return ResponseEntity.ok(updated);
     }
 
-    // Delete a notification – optionally check ownership based on auth
+    /**
+     * Deletes a notification by ID.
+     */
     @DeleteMapping("/{notificationId}")
-    public ResponseEntity<Void> deleteNotification(@PathVariable String notificationId,
-                                                   Authentication auth) {
+    public ResponseEntity<Void> deleteNotification(
+            @PathVariable String notificationId,
+            Authentication auth
+    ) {
         notificationService.deleteNotification(notificationId);
         return ResponseEntity.ok().build();
     }

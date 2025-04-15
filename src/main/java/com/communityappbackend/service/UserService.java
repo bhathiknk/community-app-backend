@@ -3,11 +3,15 @@ package com.communityappbackend.service;
 import com.communityappbackend.dto.SignUpRequest;
 import com.communityappbackend.dto.UpdateUserProfileRequestDTO;
 import com.communityappbackend.exception.EmailAlreadyExistsException;
+import com.communityappbackend.exception.UserNotFoundException;
 import com.communityappbackend.model.User;
 import com.communityappbackend.repository.UserRepository;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
+/**
+ * Provides sign-up and user profile update logic.
+ */
 @Service
 public class UserService {
 
@@ -21,12 +25,10 @@ public class UserService {
     }
 
     public User signUp(SignUpRequest request) {
-        // Check if email is taken
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new EmailAlreadyExistsException("Email is already in use");
+            throw new EmailAlreadyExistsException("Email is already in use: " + request.getEmail());
         }
 
-        // Create a new user
         User user = User.builder()
                 .fullName(request.getFullName())
                 .email(request.getEmail())
@@ -34,7 +36,7 @@ public class UserService {
                 .address(request.getAddress())
                 .city(request.getCity())
                 .province(request.getProvince())
-                .passwordHash(passwordEncoder.encode(request.getPassword())) // BCrypt
+                .passwordHash(passwordEncoder.encode(request.getPassword()))
                 .isVerified(false)
                 .build();
 
@@ -47,15 +49,12 @@ public class UserService {
 
     public User findById(String userId) {
         return userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new UserNotFoundException("User not found: " + userId));
     }
 
-
-
-    // NEW: update user profile fields.
     public User updateUserProfile(String userId, UpdateUserProfileRequestDTO req) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new UserNotFoundException("User not found: " + userId));
 
         if (req.getFullName() != null && !req.getFullName().isEmpty()) {
             user.setFullName(req.getFullName());
@@ -75,5 +74,4 @@ public class UserService {
 
         return userRepository.save(user);
     }
-
 }

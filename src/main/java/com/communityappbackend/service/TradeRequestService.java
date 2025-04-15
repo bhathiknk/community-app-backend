@@ -1,19 +1,18 @@
 package com.communityappbackend.service;
 
-import com.communityappbackend.dto.ItemResponse;
-import com.communityappbackend.dto.TradeRequestDTO;
-import com.communityappbackend.dto.TradeRequestDetailedDTO;
+import com.communityappbackend.dto.*;
+import com.communityappbackend.exception.TradeRequestNotFoundException;
 import com.communityappbackend.model.*;
-import com.communityappbackend.repository.TradeRequestRepository;
-import com.communityappbackend.repository.ItemRepository;
-import com.communityappbackend.repository.UserRepository;
-import com.communityappbackend.dto.NotificationDTO;
+import com.communityappbackend.repository.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * Manages creation, approval, rejection, and details of trade requests.
+ */
 @Service
 public class TradeRequestService {
 
@@ -22,17 +21,21 @@ public class TradeRequestService {
     private final UserRepository userRepo;
     private final NotificationService notificationService;
 
-    public TradeRequestService(TradeRequestRepository tradeRequestRepo,
-                               ItemRepository itemRepo,
-                               UserRepository userRepo,
-                               NotificationService notificationService) {
+    public TradeRequestService(
+            TradeRequestRepository tradeRequestRepo,
+            ItemRepository itemRepo,
+            UserRepository userRepo,
+            NotificationService notificationService
+    ) {
         this.tradeRequestRepo = tradeRequestRepo;
         this.itemRepo = itemRepo;
         this.userRepo = userRepo;
         this.notificationService = notificationService;
     }
 
-    // 1) Create a trade request
+    /**
+     * Creates a trade request (money or item-based).
+     */
     public TradeRequest createRequest(TradeRequestDTO dto, Authentication auth) {
         User user = (User) auth.getPrincipal();
         TradeRequest req = TradeRequest.builder()
@@ -45,80 +48,99 @@ public class TradeRequestService {
         return tradeRequestRepo.save(req);
     }
 
-    // 2) Get all requests for items the current user owns
+    /**
+     * Returns all incoming trade requests for items that the current user owns.
+     */
     public List<TradeRequest> getIncomingRequests(Authentication auth) {
         User user = (User) auth.getPrincipal();
-        String currentUserId = user.getUserId();
-        List<Item> myItems = itemRepo.findByOwnerId(currentUserId);
+        List<Item> myItems = itemRepo.findByOwnerId(user.getUserId());
         Set<String> myItemIds = myItems.stream()
                 .map(Item::getItemId)
                 .collect(Collectors.toSet());
-        List<TradeRequest> allRequests = tradeRequestRepo.findAll();
-        return allRequests.stream()
+
+        return tradeRequestRepo.findAll().stream()
                 .filter(r -> myItemIds.contains(r.getItemId()))
                 .collect(Collectors.toList());
     }
 
-    // 3) Approve a request and notify the sender.
+    /**
+     * Approves a request (with optional selected item from the sender).
+     */
     public TradeRequest approveRequest(String requestId, String selectedItemId, Authentication auth) {
-        Optional<TradeRequest> opt = tradeRequestRepo.findById(requestId);
-        if (opt.isEmpty()) {
-            throw new RuntimeException("Request not found");
-        }
-        TradeRequest req = opt.get();
+        TradeRequest req = tradeRequestRepo.findById(requestId)
+                .orElseThrow(() -> new TradeRequestNotFoundException("Trade request not found: " + requestId));
+
         if (!"PENDING".equals(req.getStatus())) {
-            throw new RuntimeException("Request is not pending");
+            throw new RuntimeException("Cannot approve a request that is not pending.");
         }
         req.setReceiverSelectedItemId(selectedItemId);
         req.setStatus("ACCEPTED");
         TradeRequest updated = tradeRequestRepo.save(req);
-        // Notify sender
+
         User sender = userRepo.findById(req.getOfferedBy()).orElse(null);
         String senderName = (sender != null) ? sender.getFullName() : "Sender";
         String message = senderName + ", your trade request has been accepted!";
         notificationService.createNotification(new NotificationDTO(req.getOfferedBy(), message));
+
         return updated;
     }
 
-    // 4) Reject a request and notify the sender.
+    /**
+     * Rejects a request and notifies the sender.
+     */
     public TradeRequest rejectRequest(String requestId, Authentication auth) {
-        Optional<TradeRequest> opt = tradeRequestRepo.findById(requestId);
-        if (opt.isEmpty()) {
-            throw new RuntimeException("Request not found");
-        }
-        TradeRequest req = opt.get();
+        TradeRequest req = tradeRequestRepo.findById(requestId)
+                .orElseThrow(() -> new TradeRequestNotFoundException("Trade request not found: " + requestId));
+
         if (!"PENDING".equals(req.getStatus())) {
-            throw new RuntimeException("Request is not pending");
+            throw new RuntimeException("Cannot reject a request that is not pending.");
         }
         req.setStatus("REJECTED");
         TradeRequest updated = tradeRequestRepo.save(req);
-        // Notify sender
+
         User sender = userRepo.findById(req.getOfferedBy()).orElse(null);
         String senderName = (sender != null) ? sender.getFullName() : "Sender";
         String message = senderName + ", your trade request has been rejected.";
         notificationService.createNotification(new NotificationDTO(req.getOfferedBy(), message));
+
         return updated;
     }
 
-    // 5) Get detailed incoming requests for items the current user owns.
-    // Optionally, you can allow filtering by status (e.g. "PENDING", "ACCEPTED", "REJECTED")
+    /**
+     * Returns a detailed list of incoming requests for items owned by the current user,
+     * optionally filtered by status.
+     */
     public List<TradeRequestDetailedDTO> getIncomingRequestsDetailed(Authentication auth, String status) {
         User me = (User) auth.getPrincipal();
         List<Item> myItems = itemRepo.findByOwnerId(me.getUserId());
         Set<String> myItemIds = myItems.stream()
                 .map(Item::getItemId)
                 .collect(Collectors.toSet());
-        List<TradeRequest> allRequests = tradeRequestRepo.findAll();
-        List<TradeRequest> incomingForMe = allRequests.stream()
+
+        List<TradeRequest> incomingForMe = tradeRequestRepo.findAll().stream()
                 .filter(r -> myItemIds.contains(r.getItemId()))
                 .collect(Collectors.toList());
+
         if (status != null && !status.isEmpty()) {
             incomingForMe = incomingForMe.stream()
                     .filter(r -> r.getStatus().equalsIgnoreCase(status))
                     .collect(Collectors.toList());
         }
-        return incomingForMe.stream().map(this::toDetailedDTO).collect(Collectors.toList());
+
+        return incomingForMe.stream()
+                .map(this::toDetailedDTO)
+                .collect(Collectors.toList());
     }
+
+    /**
+     * Returns the publicly listed items of a sender (by userId).
+     */
+    public List<ItemResponse> getItemsByOwner(String userId) {
+        List<Item> items = itemRepo.findByOwnerId(userId);
+        return items.stream().map(this::toItemResponse).collect(Collectors.toList());
+    }
+
+    // -------------------------- PRIVATE HELPERS -------------------------- //
 
     private TradeRequestDetailedDTO toDetailedDTO(TradeRequest req) {
         User sender = userRepo.findById(req.getOfferedBy()).orElse(null);
@@ -135,30 +157,24 @@ public class TradeRequestService {
                 ? mapImagesToPaths(requestedItem.getImages())
                 : Collections.emptyList();
 
-        // Get receiver info from the requested item's owner
-        User receiver = null;
-        String receiverUserId = "";
-        String receiverFullName = "";
-        String receiverEmail = "";
-        String receiverPhone = "";
-        String receiverAddress = "";
-        if (requestedItem != null) {
-            receiver = userRepo.findById(requestedItem.getOwnerId()).orElse(null);
-            if (receiver != null) {
-                receiverUserId = receiver.getUserId();
-                receiverFullName = receiver.getFullName();
-                receiverEmail = receiver.getEmail();
-                receiverPhone = receiver.getPhone();
-                receiverAddress = receiver.getAddress();
-            }
-        }
+        // Retrieve the item owner
+        User receiver = (requestedItem != null)
+                ? userRepo.findById(requestedItem.getOwnerId()).orElse(null)
+                : null;
 
-        // Offered item details
+        String receiverUserId = (receiver != null) ? receiver.getUserId() : "";
+        String receiverFullName = (receiver != null) ? receiver.getFullName() : "";
+        String receiverEmail = (receiver != null) ? receiver.getEmail() : "";
+        String receiverPhone = (receiver != null) ? receiver.getPhone() : "";
+        String receiverAddress = (receiver != null) ? receiver.getAddress() : "";
+
+        // If it's an item-based trade and the request has a selected item from the sender
         Item offeredItem = null;
         String offeredItemTitle = null;
         String offeredItemDescription = null;
         Double offeredItemPrice = null;
         List<String> offeredItemImages = Collections.emptyList();
+
         if ("ITEM".equals(req.getTradeType()) && req.getReceiverSelectedItemId() != null) {
             offeredItem = itemRepo.findById(req.getReceiverSelectedItemId()).orElse(null);
             if (offeredItem != null) {
@@ -186,7 +202,6 @@ public class TradeRequestService {
                 .offeredItemDescription(offeredItemDescription)
                 .offeredItemPrice(offeredItemPrice)
                 .offeredItemImages(offeredItemImages)
-                // Set contact information
                 .senderEmail(senderEmail)
                 .senderPhone(senderPhone)
                 .senderAddress(senderAddress)
@@ -198,9 +213,6 @@ public class TradeRequestService {
                 .build();
     }
 
-
-
-    // Map images to URLs.
     private List<String> mapImagesToPaths(List<ItemImage> images) {
         if (images == null) return Collections.emptyList();
         return images.stream()
@@ -209,12 +221,6 @@ public class TradeRequestService {
                     return "http://10.0.2.2:8080/api/items/image/" + fileName;
                 })
                 .collect(Collectors.toList());
-    }
-
-    // 6) Return items by owner.
-    public List<ItemResponse> getItemsByOwner(String userId) {
-        List<Item> items = itemRepo.findByOwnerId(userId);
-        return items.stream().map(this::toItemResponse).collect(Collectors.toList());
     }
 
     private ItemResponse toItemResponse(Item item) {

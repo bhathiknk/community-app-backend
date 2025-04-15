@@ -2,6 +2,9 @@ package com.communityappbackend.dto;
 
 import lombok.*;
 
+/**
+ * Request object for creating a new category.
+ */
 @Getter
 @Setter
 @NoArgsConstructor

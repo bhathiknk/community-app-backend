@@ -1,4 +1,4 @@
-package com.communityappbackend.Config;
+package com.communityappbackend.config;
 
 import io.swagger.v3.oas.models.*;
 import io.swagger.v3.oas.models.info.*;

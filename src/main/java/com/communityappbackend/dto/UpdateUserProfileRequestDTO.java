@@ -2,6 +2,7 @@ package com.communityappbackend.dto;
 
 import lombok.*;
 
+/** Request object for updating user profile fields. */
 @Getter
 @Setter
 @NoArgsConstructor

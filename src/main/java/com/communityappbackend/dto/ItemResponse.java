@@ -1,9 +1,9 @@
-// File: ItemResponse.java
 package com.communityappbackend.dto;
 
 import lombok.*;
 import java.util.List;
 
+/** Response object representing an item, including images and owner info. */
 @Getter
 @Setter
 @NoArgsConstructor

@@ -2,6 +2,7 @@ package com.communityappbackend.dto;
 
 import lombok.*;
 
+/** Response object representing a user's profile. */
 @Getter
 @Setter
 @NoArgsConstructor
