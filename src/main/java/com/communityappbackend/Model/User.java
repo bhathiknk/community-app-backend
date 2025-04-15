@@ -33,10 +33,18 @@ public class User {
     @Column(columnDefinition = "TEXT")
     private String address;
 
+    // NEW: city and province
+    @Column(name = "city", length = 100)
+    private String city;
+
+    @Column(name = "province", length = 100)
+    private String province;
+
     @Column(name = "is_verified", columnDefinition = "BOOLEAN DEFAULT FALSE")
     private Boolean isVerified = false;
 
-    @Column(name = "created_at", columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP", insertable = false, updatable = false)
+    @Column(name = "created_at", columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+            insertable = false, updatable = false)
     private java.sql.Timestamp createdAt;
 
     // A convenience method to generate userId if it's null

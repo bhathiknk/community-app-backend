@@ -25,6 +25,8 @@ public class UserController {
                 .email(loggedUser.getEmail())
                 .phone(loggedUser.getPhone())
                 .address(loggedUser.getAddress())
+                .city(loggedUser.getCity())      // include city
+                .province(loggedUser.getProvince()) // include province
                 .build();
     }
 }

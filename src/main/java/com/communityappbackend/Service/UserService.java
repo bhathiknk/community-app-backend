@@ -31,6 +31,8 @@ public class UserService {
                 .email(request.getEmail())
                 .phone(request.getPhone())
                 .address(request.getAddress())
+                .city(request.getCity())
+                .province(request.getProvince())
                 .passwordHash(passwordEncoder.encode(request.getPassword())) // BCrypt
                 .isVerified(false)
                 .build();

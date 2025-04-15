@@ -13,4 +13,8 @@ public class SignUpRequest {
     private String phone;
     private String password;   // plain text from client
     private String address;
+
+    // NEW: city and province
+    private String city;
+    private String province;
 }
