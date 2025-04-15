@@ -58,6 +58,8 @@ public class SecurityConfig {
                         // Profile image endpoints require authentication
                         .requestMatchers("/uploadProfileImage", "/getProfileImage").authenticated()
 
+                        .requestMatchers("/image/{fileName}/**").permitAll()
+
 
 
 

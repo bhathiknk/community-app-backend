@@ -1,3 +1,4 @@
+// File: ItemResponse.java
 package com.communityappbackend.DTO;
 
 import lombok.*;
@@ -20,9 +21,12 @@ public class ItemResponse {
     private String status;
     private String createdAt;
 
-    // NEW: Owner info
+    // Owner info
     private String ownerFullName;
     private String ownerEmail;
     private String ownerPhone;
     private String ownerAddress;
+
+    // NEW: Owner's profile image URL
+    private String ownerProfileImage;
 }

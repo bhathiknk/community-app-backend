@@ -17,7 +17,8 @@ import java.util.UUID;
 @Service
 public class ProfileImageService {
 
-    private static final String UPLOAD_DIR = "C:\\Projects\\Community App\\community-app-backend\\src\\main\\java\\com\\communityappbackend\\Assets\\ProfileImages";
+    private static final String UPLOAD_DIR =
+            "C:\\Projects\\Community App\\community-app-backend\\src\\main\\java\\com\\communityappbackend\\Assets\\ProfileImages";
 
     @Autowired
     private UserRepository userRepository;
@@ -40,8 +41,11 @@ public class ProfileImageService {
             throw new IllegalArgumentException("File must have a name!");
         }
 
+        // Clean up the file name
         originalFileName = originalFileName.replace("\\", "/");
-        originalFileName = originalFileName.contains("/") ? originalFileName.substring(originalFileName.lastIndexOf("/") + 1) : originalFileName;
+        if (originalFileName.contains("/")) {
+            originalFileName = originalFileName.substring(originalFileName.lastIndexOf("/") + 1);
+        }
         String cleanFileName = StringUtils.cleanPath(originalFileName);
         String newFileName = UUID.randomUUID().toString() + "_" + cleanFileName;
         newFileName = newFileName.replaceAll("[^a-zA-Z0-9._-]", "");
@@ -49,19 +53,24 @@ public class ProfileImageService {
         Path destinationPath = Paths.get(UPLOAD_DIR, newFileName).normalize();
         Files.copy(file.getInputStream(), destinationPath, StandardCopyOption.REPLACE_EXISTING);
 
+        // Ensure user exists
         User user = userRepository.findById(userId).orElse(null);
         if (user == null) {
             throw new IllegalArgumentException("User not found!");
         }
 
-        UserProfileImage profileImage = userProfileImageRepository.findByUserId(userId);
+        // Fetch existing profile image record (if any)
+        UserProfileImage profileImage =
+                userProfileImageRepository.findByUserId(userId).orElse(null);
         if (profileImage != null && profileImage.getImagePath() != null) {
+            // Delete the old file
             Path oldFilePath = Paths.get(UPLOAD_DIR, profileImage.getImagePath()).normalize();
             File oldFile = oldFilePath.toFile();
             if (oldFile.exists()) {
                 oldFile.delete();
             }
         } else {
+            // If no record yet, create one
             if (profileImage == null) {
                 profileImage = new UserProfileImage();
                 profileImage.setUserId(userId);
@@ -76,12 +85,11 @@ public class ProfileImageService {
     }
 
     public String getProfileImage(String userId) {
-        UserProfileImage profileImage = userProfileImageRepository.findByUserId(userId);
+        UserProfileImage profileImage =
+                userProfileImageRepository.findByUserId(userId).orElse(null);
         if (profileImage != null && profileImage.getImagePath() != null) {
-            // return only the filename
             return profileImage.getImagePath();
         }
         return "";
     }
-
 }

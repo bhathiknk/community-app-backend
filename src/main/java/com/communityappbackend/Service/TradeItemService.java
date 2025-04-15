@@ -3,7 +3,9 @@ package com.communityappbackend.Service;
 import com.communityappbackend.DTO.ItemResponse;
 import com.communityappbackend.Model.Item;
 import com.communityappbackend.Model.User;
+import com.communityappbackend.Model.UserProfileImage;
 import com.communityappbackend.Repository.ItemRepository;
+import com.communityappbackend.Repository.UserProfileImageRepository;
 import com.communityappbackend.Repository.UserRepository;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
@@ -18,23 +20,27 @@ public class TradeItemService {
 
     private final ItemRepository itemRepo;
     private final UserRepository userRepo;
+    private final UserProfileImageRepository userProfileImageRepo;
 
-    public TradeItemService(ItemRepository itemRepo, UserRepository userRepo) {
+    public TradeItemService(
+            ItemRepository itemRepo,
+            UserRepository userRepo,
+            UserProfileImageRepository userProfileImageRepo
+    ) {
         this.itemRepo = itemRepo;
         this.userRepo = userRepo;
+        this.userProfileImageRepo = userProfileImageRepo;
     }
 
-    /**
-     * Returns all items with status = ACTIVE from users other than the current user.
-     * Optional category filter (if categoryId != null).
-     */
     public List<ItemResponse> getAllActiveExceptUser(Authentication auth, Long categoryId) {
         User user = (User) auth.getPrincipal();
         String currentUserId = user.getUserId();
 
         List<Item> items;
         if (categoryId != null) {
-            items = itemRepo.findByStatusAndOwnerIdNotAndCategoryId("ACTIVE", currentUserId, categoryId);
+            items = itemRepo.findByStatusAndOwnerIdNotAndCategoryId(
+                    "ACTIVE", currentUserId, categoryId
+            );
         } else {
             items = itemRepo.findByStatusAndOwnerIdNot("ACTIVE", currentUserId);
         }
@@ -44,9 +50,6 @@ public class TradeItemService {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Fetch single item details (including owner info).
-     */
     public ItemResponse getItemDetails(String itemId) {
         Optional<Item> opt = itemRepo.findById(itemId);
         if (opt.isEmpty()) {
@@ -55,11 +58,8 @@ public class TradeItemService {
         return toItemResponseWithOwner(opt.get());
     }
 
-    /**
-     * Convert Item to ItemResponse, including images and owner contact info.
-     */
     private ItemResponse toItemResponseWithOwner(Item item) {
-        // Convert each image path to a fully qualified URL
+        // Convert item images to full URLs
         List<String> imageUrls = item.getImages().stream()
                 .map(img -> {
                     String fileName = img.getImagePath().replace("Assets/", "");
@@ -75,18 +75,32 @@ public class TradeItemService {
                     .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
         }
 
-        // Fetch owner user data
+        // Fetch owner data
         User owner = userRepo.findById(item.getOwnerId()).orElse(null);
 
         String ownerFullName = "";
         String ownerEmail = "";
         String ownerPhone = "";
         String ownerAddress = "";
+        String ownerProfileImageUrl = "";
+
         if (owner != null) {
             ownerFullName = owner.getFullName();
             ownerEmail = owner.getEmail();
             ownerPhone = owner.getPhone();
-            ownerAddress = owner.getAddress() != null ? owner.getAddress() : "";
+            ownerAddress = (owner.getAddress() != null) ? owner.getAddress() : "";
+
+            // Fetch user's profile image from DB (if exists)
+            Optional<UserProfileImage> upiOpt =
+                    userProfileImageRepo.findByUserId(owner.getUserId());
+            if (upiOpt.isPresent()) {
+                UserProfileImage upi = upiOpt.get();
+                // Build the fully qualified URL for the profile image
+                if (upi.getImagePath() != null && !upi.getImagePath().isEmpty()) {
+                    String fileName = upi.getImagePath().replace("Assets/", "");
+                    ownerProfileImageUrl = "http://10.0.2.2:8080/image/" + fileName;
+                }
+            }
         }
 
         return ItemResponse.builder()
@@ -98,13 +112,11 @@ public class TradeItemService {
                 .images(imageUrls)
                 .status(item.getStatus())
                 .createdAt(createdAtStr)
-
-                // Fill owner info
                 .ownerFullName(ownerFullName)
                 .ownerEmail(ownerEmail)
                 .ownerPhone(ownerPhone)
                 .ownerAddress(ownerAddress)
+                .ownerProfileImage(ownerProfileImageUrl)
                 .build();
     }
-
 }
