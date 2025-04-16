@@ -1,6 +1,7 @@
 package com.communityappbackend.service;
 
 import com.communityappbackend.dto.*;
+import com.communityappbackend.dto.DonationRequest;
 import com.communityappbackend.exception.*;
 import com.communityappbackend.model.*;
 import com.communityappbackend.repository.*;
