@@ -3,9 +3,7 @@ package com.communityappbackend.service;
 import com.communityappbackend.dto.DonationRequest;
 import com.communityappbackend.dto.DonationResponse;
 import com.communityappbackend.exception.*;
-import com.communityappbackend.model.DonationItem;
-import com.communityappbackend.model.DonationItemImage;
-import com.communityappbackend.model.User;
+import com.communityappbackend.model.*;
 import com.communityappbackend.repository.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
@@ -25,7 +23,6 @@ public class DonationService {
     private final DonationItemImageRepository donationImageRepo;
     private final UserRepository userRepo;
 
-    // Path for saving donation images
     private static final String DONATIONS_DIR =
             "C:\\Projects\\Community App\\community-app-backend\\src\\main\\java\\com\\communityappbackend\\Assets\\Donations";
 
@@ -37,21 +34,18 @@ public class DonationService {
         this.userRepo = userRepo;
     }
 
-    /**
-     * Adds a donation item with up to 5 images.
-     */
+    // ------------------- Existing Logic ------------------- //
+
     public DonationResponse addDonation(
             DonationRequest request,
             List<MultipartFile> files,
             Authentication auth
     ) {
-        // 1) Ensure the user is authenticated.
         User user = (User) auth.getPrincipal();
         if (user == null) {
             throw new UserNotFoundException("Authenticated user not found.");
         }
 
-        // 2) Create the donation item record
         DonationItem donation = DonationItem.builder()
                 .title(request.getTitle())
                 .description(request.getDescription())
@@ -60,15 +54,10 @@ public class DonationService {
                 .build();
         donation = donationRepo.save(donation);
 
-        // 3) Process up to 5 images
         if (files != null && !files.isEmpty()) {
-            // If you want to throw an error if > 5, uncomment below:
-            // if (files.size() > 5) {
-            //     throw new RuntimeException("Cannot upload more than 5 donation images.");
-            // }
             int count = 0;
             for (MultipartFile file : files) {
-                if (count >= 5) break; // ignore extras
+                if (count >= 5) break;
                 String filePath = saveDonationFile(file);
                 DonationItemImage img = DonationItemImage.builder()
                         .imagePath(filePath)
@@ -79,27 +68,98 @@ public class DonationService {
             }
         }
 
-        // 4) Return response
         return toDonationResponse(donation);
     }
 
-    /**
-     * Returns the current user's donation items.
-     */
     public List<DonationResponse> getMyDonations(Authentication auth) {
         User user = (User) auth.getPrincipal();
-        return donationRepo.findByOwnerId(user.getUserId()).stream()
+        List<DonationItem> items = donationRepo.findByOwnerId(user.getUserId());
+        return items.stream()
                 .map(this::toDonationResponse)
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Returns all active donation items (status='ACTIVE').
-     */
     public List<DonationResponse> getAllActiveDonations() {
         return donationRepo.findByStatus("ACTIVE").stream()
                 .map(this::toDonationResponse)
                 .collect(Collectors.toList());
+    }
+
+    // ------------------- NEW METHODS ------------------- //
+
+    /**
+     * Fetch a single donation item by ID, verifying the authenticated user is the owner.
+     */
+    public DonationResponse getDonationById(String donationId, Authentication auth) {
+        User user = (User) auth.getPrincipal();
+        DonationItem donation = donationRepo.findById(donationId)
+                .orElseThrow(() -> new DonationNotFoundException("Donation not found: " + donationId));
+
+        // If only the owner can view:
+        if (!donation.getOwnerId().equals(user.getUserId())) {
+            throw new RuntimeException("Not authorized to view this donation.");
+        }
+
+        return toDonationResponse(donation);
+    }
+
+    /**
+     * Update donation fields, remove selected images, add new images, etc.
+     */
+    public DonationResponse updateDonation(
+            String donationId,
+            String title,
+            String description,
+            String status,
+            List<Long> imageIdsToRemove,
+            List<MultipartFile> newImages,
+            Authentication auth
+    ) {
+        User user = (User) auth.getPrincipal();
+        DonationItem donation = donationRepo.findById(donationId)
+                .orElseThrow(() -> new DonationNotFoundException("Donation not found: " + donationId));
+
+        if (!donation.getOwnerId().equals(user.getUserId())) {
+            throw new RuntimeException("Not authorized to edit this donation.");
+        }
+
+        // 1) Update text fields
+        donation.setTitle(title);
+        donation.setDescription(description);
+        donation.setStatus(status);
+
+        // 2) Remove images if requested
+        if (imageIdsToRemove != null && !imageIdsToRemove.isEmpty()) {
+            for (Long imageId : imageIdsToRemove) {
+                Optional<DonationItemImage> imgOpt = donationImageRepo.findById(imageId);
+                if (imgOpt.isPresent()) {
+                    DonationItemImage img = imgOpt.get();
+                    // remove from DB
+                    donationImageRepo.delete(img);
+                    // remove file from disk
+                    removeDonationFile(img.getImagePath());
+                }
+            }
+        }
+
+        // 3) Add new images if provided, limit total to 5
+        int existingCount = donation.getImages().size(); // after removal
+        if (newImages != null && !newImages.isEmpty()) {
+            for (MultipartFile file : newImages) {
+                if (existingCount >= 5) break;
+                String filePath = saveDonationFile(file);
+                DonationItemImage img = DonationItemImage.builder()
+                        .imagePath(filePath)
+                        .donationItem(donation)
+                        .build();
+                donationImageRepo.save(img);
+                existingCount++;
+            }
+        }
+
+        // 4) Save donation
+        DonationItem updated = donationRepo.save(donation);
+        return toDonationResponse(updated);
     }
 
     // ------------------ Private Helpers ------------------ //
@@ -114,8 +174,6 @@ public class DonationService {
             String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename();
             File dest = new File(dir, fileName);
             file.transferTo(dest);
-
-            // e.g. "Donations/<uuid_filename>.jpg"
             return "Donations/" + fileName;
 
         } catch (IOException e) {
@@ -123,13 +181,35 @@ public class DonationService {
         }
     }
 
+    private void removeDonationFile(String imagePath) {
+        if (imagePath == null || imagePath.isEmpty()) return;
+        try {
+            String fileName = imagePath.replace("Donations/", "");
+            File file = new File(DONATIONS_DIR, fileName);
+            if (file.exists()) {
+                file.delete();
+            }
+        } catch (Exception e) {
+            // log or ignore
+        }
+    }
+
     private DonationResponse toDonationResponse(DonationItem item) {
-        List<String> imageUrls = item.getImages().stream()
-                .map(img -> {
-                    String fileName = img.getImagePath().replace("Donations/", "");
-                    return "http://10.0.2.2:8080/api/donations/image/" + fileName;
-                })
-                .collect(Collectors.toList());
+        // Simple URLs
+        List<String> imageUrls = new ArrayList<>();
+        // Detailed map of { imageId, url }
+        List<Map<String, Object>> detailedList = new ArrayList<>();
+
+        for (DonationItemImage img : item.getImages()) {
+            String fileName = img.getImagePath().replace("Donations/", "");
+            String url = "http://10.0.2.2:8080/api/donations/image/" + fileName;
+            imageUrls.add(url);
+
+            Map<String, Object> map = new HashMap<>();
+            map.put("imageId", img.getImageId());
+            map.put("url", url);
+            detailedList.add(map);
+        }
 
         String createdAt = null;
         if (item.getCreatedAt() != null) {
@@ -137,7 +217,6 @@ public class DonationService {
                     .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
         }
 
-        // Optionally fetch user data
         User owner = userRepo.findById(item.getOwnerId()).orElse(null);
         String ownerName = (owner != null) ? owner.getFullName() : "Unknown";
         String ownerEmail = (owner != null) ? owner.getEmail() : "-";
@@ -149,6 +228,7 @@ public class DonationService {
                 .status(item.getStatus())
                 .createdAt(createdAt)
                 .images(imageUrls)
+                .imageList(detailedList) // new field
                 .ownerId(item.getOwnerId())
                 .ownerFullName(ownerName)
                 .ownerEmail(ownerEmail)

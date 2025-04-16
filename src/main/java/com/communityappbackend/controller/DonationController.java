@@ -3,6 +3,7 @@ package com.communityappbackend.controller;
 import com.communityappbackend.dto.DonationRequest;
 import com.communityappbackend.dto.DonationResponse;
 import com.communityappbackend.exception.DonationNotFoundException;
+import com.communityappbackend.model.DonationItem;
 import com.communityappbackend.service.DonationService;
 import org.springframework.core.io.*;
 import org.springframework.http.*;
@@ -29,12 +30,8 @@ public class DonationController {
         this.donationService = donationService;
     }
 
-    /**
-     * Add new donation item with optional images (limit 5).
-     * Must use multipart/form-data in the request.
-     * "donation" = JSON (DonationRequest)
-     * "files" = up to 5 image files
-     */
+    // ------------------- Existing Endpoints ------------------- //
+
     @PostMapping("/add")
     public DonationResponse addDonation(
             @RequestParam("title") String title,
@@ -48,18 +45,11 @@ public class DonationController {
         return donationService.addDonation(donationRequest, files, auth);
     }
 
-
-    /**
-     * Returns only the authenticated user's donation items.
-     */
     @GetMapping("/my")
     public List<DonationResponse> getMyDonations(Authentication auth) {
         return donationService.getMyDonations(auth);
     }
 
-    /**
-     * Serve donation images publicly: /api/donations/image/{filename}
-     */
     @GetMapping("/image/{filename:.+}")
     public ResponseEntity<Resource> getDonationImage(@PathVariable String filename) {
         try {
@@ -84,11 +74,43 @@ public class DonationController {
         }
     }
 
-    /**
-     * (Optional) Return all active donations from all users.
-     */
     @GetMapping("/active")
     public List<DonationResponse> getAllActiveDonations() {
         return donationService.getAllActiveDonations();
     }
+
+    // ------------------- New Endpoints ------------------- //
+
+    /**
+     * Get a single donation item by ID (for the "view" popup).
+     */
+    @GetMapping("/{donationId}")
+    public DonationResponse getDonationById(
+            @PathVariable String donationId,
+            Authentication auth
+    ) {
+        return donationService.getDonationById(donationId, auth);
+    }
+
+
+    /**
+     * Update donation (title, description, status) and manage images.
+     * "imageIdsToRemove" -> list of existing DB image IDs to remove.
+     * "files" -> new images to add.
+     */
+    @PutMapping("/{donationId}")
+    public DonationResponse updateDonation(
+            @PathVariable String donationId,
+            @RequestParam("title") String title,
+            @RequestParam("description") String description,
+            @RequestParam("status") String status,
+            @RequestParam(value = "imageIdsToRemove", required = false) List<Long> imageIdsToRemove,
+            @RequestPart(value = "files", required = false) List<MultipartFile> newImages,
+            Authentication auth
+    ) {
+        return donationService.updateDonation(
+                donationId, title, description, status, imageIdsToRemove, newImages, auth
+        );
+    }
+
 }
