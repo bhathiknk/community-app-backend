@@ -11,9 +11,6 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
-/**
- * Configures Spring Security, including JWT authentication.
- */
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
@@ -50,23 +47,31 @@ public class SecurityConfig {
                                 "/webjars/**"
                         ).permitAll()
 
-                        // Allow auth APIs (signup/login) without token
+                        // Auth APIs (signup/login) can be accessed without token
                         .requestMatchers("/api/auth/**").permitAll()
 
-                        // We require authentication for certain endpoints
-                        .requestMatchers("/api/user/**").authenticated()
+                        // Profile images (upload requires auth, but the file path can be public)
+                        .requestMatchers("/ProfileImages/**").permitAll()
+                        .requestMatchers("/uploadProfileImage", "/getProfileImage").authenticated()
+                        .requestMatchers("/image/{fileName}/**").permitAll()
+
+                        // Items: /api/items/image is public (serves images), others require auth
                         .requestMatchers("/api/items/image/**").permitAll()
                         .requestMatchers("/api/items/**").authenticated()
 
-                        .requestMatchers("/ProfileImages/**").permitAll()
-                        .requestMatchers("/uploadProfileImage", "/getProfileImage").authenticated()
+                        // Donations: images are public, everything else requires auth
+                        .requestMatchers("/api/donations/image/**").permitAll()
+                        .requestMatchers("/api/donations/add").authenticated()
+                        .requestMatchers("/api/donations/**").authenticated()
 
-                        .requestMatchers("/image/{fileName}/**").permitAll()
 
-                        // Everything else must be authenticated
+                        // user endpoints
+                        .requestMatchers("/api/user/**").authenticated()
+
+                        // all other requests must be authenticated
                         .anyRequest().authenticated()
                 )
-                // Insert JWT filter
+                // Insert our JWT filter
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

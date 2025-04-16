@@ -48,4 +48,17 @@ public class GlobalExceptionHandler {
     public String handleRuntime(RuntimeException ex) {
         return ex.getMessage();
     }
+
+    @ExceptionHandler(DonationNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public String handleDonationNotFound(DonationNotFoundException ex) {
+        return ex.getMessage();
+    }
+
+    @ExceptionHandler(DonationImageSaveException.class)
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    public String handleDonationImageSave(DonationImageSaveException ex) {
+        return ex.getMessage();
+    }
+
 }
