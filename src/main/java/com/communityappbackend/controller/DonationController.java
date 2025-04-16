@@ -113,4 +113,12 @@ public class DonationController {
         );
     }
 
+
+    /**
+     * Returns all ACTIVE donation items except those posted by the current user.
+     */
+    @GetMapping("/others")
+    public List<DonationResponse> getDonationsFromOthers(Authentication auth) {
+        return donationService.getAllDonationsExceptMine(auth);
+    }
 }

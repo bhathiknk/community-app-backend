@@ -1,13 +1,9 @@
 package com.communityappbackend.dto;
 
 import lombok.*;
-
 import java.util.List;
 import java.util.Map;
 
-/**
- * Response object for donation items.
- */
 @Getter
 @Setter
 @NoArgsConstructor
@@ -20,14 +16,23 @@ public class DonationResponse {
     private String status;
     private String createdAt;
 
-    // For backward compatibility, keep this simple "images" list of URLs
+    // Simple list of image URLs
     private List<String> images;
 
-    // New: Detailed list that includes image IDs
+    // Detailed map: imageId + url
     private List<Map<String, Object>> imageList;
+
     // Owner info
     private String ownerId;
     private String ownerFullName;
     private String ownerEmail;
-    // etc., if needed
+
+    // NEW fields for owner contact
+    private String ownerPhone;
+    private String ownerAddress;
+    private String ownerCity;
+    private String ownerProvince;
+
+    // NEW field for owner profile image
+    private String ownerProfileImage;
 }

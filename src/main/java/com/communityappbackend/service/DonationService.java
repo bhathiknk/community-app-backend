@@ -1,7 +1,6 @@
 package com.communityappbackend.service;
 
-import com.communityappbackend.dto.DonationRequest;
-import com.communityappbackend.dto.DonationResponse;
+import com.communityappbackend.dto.*;
 import com.communityappbackend.exception.*;
 import com.communityappbackend.model.*;
 import com.communityappbackend.repository.*;
@@ -22,19 +21,25 @@ public class DonationService {
     private final DonationItemRepository donationRepo;
     private final DonationItemImageRepository donationImageRepo;
     private final UserRepository userRepo;
+    private final UserProfileImageRepository userProfileImageRepo;
 
+    // Folder path for donation images
     private static final String DONATIONS_DIR =
             "C:\\Projects\\Community App\\community-app-backend\\src\\main\\java\\com\\communityappbackend\\Assets\\Donations";
 
-    public DonationService(DonationItemRepository donationRepo,
-                           DonationItemImageRepository donationImageRepo,
-                           UserRepository userRepo) {
+    public DonationService(
+            DonationItemRepository donationRepo,
+            DonationItemImageRepository donationImageRepo,
+            UserRepository userRepo,
+            UserProfileImageRepository userProfileImageRepo
+    ) {
         this.donationRepo = donationRepo;
         this.donationImageRepo = donationImageRepo;
         this.userRepo = userRepo;
+        this.userProfileImageRepo = userProfileImageRepo;
     }
 
-    // ------------------- Existing Logic ------------------- //
+    // ------------------- Existing Methods ------------------- //
 
     public DonationResponse addDonation(
             DonationRequest request,
@@ -80,22 +85,17 @@ public class DonationService {
     }
 
     public List<DonationResponse> getAllActiveDonations() {
-        return donationRepo.findByStatus("ACTIVE").stream()
+        List<DonationItem> activeList = donationRepo.findByStatus("ACTIVE");
+        return activeList.stream()
                 .map(this::toDonationResponse)
                 .collect(Collectors.toList());
     }
 
-    // ------------------- NEW METHODS ------------------- //
-
-    /**
-     * Fetch a single donation item by ID, verifying the authenticated user is the owner.
-     */
     public DonationResponse getDonationById(String donationId, Authentication auth) {
         User user = (User) auth.getPrincipal();
         DonationItem donation = donationRepo.findById(donationId)
                 .orElseThrow(() -> new DonationNotFoundException("Donation not found: " + donationId));
 
-        // If only the owner can view:
         if (!donation.getOwnerId().equals(user.getUserId())) {
             throw new RuntimeException("Not authorized to view this donation.");
         }
@@ -103,9 +103,6 @@ public class DonationService {
         return toDonationResponse(donation);
     }
 
-    /**
-     * Update donation fields, remove selected images, add new images, etc.
-     */
     public DonationResponse updateDonation(
             String donationId,
             String title,
@@ -123,27 +120,24 @@ public class DonationService {
             throw new RuntimeException("Not authorized to edit this donation.");
         }
 
-        // 1) Update text fields
         donation.setTitle(title);
         donation.setDescription(description);
         donation.setStatus(status);
 
-        // 2) Remove images if requested
+        // Remove images
         if (imageIdsToRemove != null && !imageIdsToRemove.isEmpty()) {
             for (Long imageId : imageIdsToRemove) {
                 Optional<DonationItemImage> imgOpt = donationImageRepo.findById(imageId);
                 if (imgOpt.isPresent()) {
                     DonationItemImage img = imgOpt.get();
-                    // remove from DB
                     donationImageRepo.delete(img);
-                    // remove file from disk
                     removeDonationFile(img.getImagePath());
                 }
             }
         }
 
-        // 3) Add new images if provided, limit total to 5
-        int existingCount = donation.getImages().size(); // after removal
+        // Add new images
+        int existingCount = donation.getImages().size();
         if (newImages != null && !newImages.isEmpty()) {
             for (MultipartFile file : newImages) {
                 if (existingCount >= 5) break;
@@ -157,9 +151,33 @@ public class DonationService {
             }
         }
 
-        // 4) Save donation
         DonationItem updated = donationRepo.save(donation);
         return toDonationResponse(updated);
+    }
+
+    // ------------------- NEW METHOD: "Others" Donations ------------------- //
+    /**
+     * Returns all ACTIVE donations except the current user's own posts.
+     *
+     * ALGORITHM: Linear filter (O(n)).
+     * DATA STRUCTURE: List to store all items, then we skip the user's items.
+     */
+    public List<DonationResponse> getAllDonationsExceptMine(Authentication auth) {
+        User user = (User) auth.getPrincipal();
+        String currentUserId = user.getUserId();
+
+        // 1) Fetch all ACTIVE donations
+        List<DonationItem> activeList = donationRepo.findByStatus("ACTIVE");
+
+        // 2) Filter out items with the same ownerId
+        List<DonationItem> othersList = activeList.stream()
+                .filter(donation -> !donation.getOwnerId().equals(currentUserId))
+                .collect(Collectors.toList());
+
+        // 3) Convert each to a DonationResponse
+        return othersList.stream()
+                .map(this::toDonationResponse)
+                .collect(Collectors.toList());
     }
 
     // ------------------ Private Helpers ------------------ //
@@ -194,6 +212,10 @@ public class DonationService {
         }
     }
 
+    /**
+     * Convert DonationItem -> DonationResponse. Also fetch the user's phone/address/etc
+     * plus their profile image if available.
+     */
     private DonationResponse toDonationResponse(DonationItem item) {
         // Simple URLs
         List<String> imageUrls = new ArrayList<>();
@@ -217,9 +239,30 @@ public class DonationService {
                     .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
         }
 
+        // Fetch user data
         User owner = userRepo.findById(item.getOwnerId()).orElse(null);
+
         String ownerName = (owner != null) ? owner.getFullName() : "Unknown";
         String ownerEmail = (owner != null) ? owner.getEmail() : "-";
+        String ownerPhone = (owner != null) ? owner.getPhone() : "";
+        String ownerAddress = (owner != null) ? owner.getAddress() : "";
+        String ownerCity = (owner != null) ? owner.getCity() : "";
+        String ownerProvince = (owner != null) ? owner.getProvince() : "";
+
+        // Fetch the user's profile image from DB (if any)
+        String ownerProfileImageUrl = "";
+        if (owner != null) {
+            Optional<UserProfileImage> upiOpt = userProfileImageRepo.findByUserId(owner.getUserId());
+            if (upiOpt.isPresent()) {
+                UserProfileImage upi = upiOpt.get();
+                if (upi.getImagePath() != null && !upi.getImagePath().isEmpty()) {
+                    // e.g. /image/<filename> or /api/...
+                    // For simplicity, let's mirror the approach from donations:
+                    String fileName = upi.getImagePath();
+                    ownerProfileImageUrl = "http://10.0.2.2:8080/image/" + fileName;
+                }
+            }
+        }
 
         return DonationResponse.builder()
                 .donationId(item.getDonationId())
@@ -228,10 +271,16 @@ public class DonationService {
                 .status(item.getStatus())
                 .createdAt(createdAt)
                 .images(imageUrls)
-                .imageList(detailedList) // new field
+                .imageList(detailedList)
                 .ownerId(item.getOwnerId())
                 .ownerFullName(ownerName)
                 .ownerEmail(ownerEmail)
+                // NEW fields
+                .ownerPhone(ownerPhone)
+                .ownerAddress(ownerAddress)
+                .ownerCity(ownerCity)
+                .ownerProvince(ownerProvince)
+                .ownerProfileImage(ownerProfileImageUrl)
                 .build();
     }
 }
