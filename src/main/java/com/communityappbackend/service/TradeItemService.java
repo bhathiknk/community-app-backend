@@ -86,6 +86,7 @@ public class TradeItemService {
         String ownerEmail = "";
         String ownerPhone = "";
         String ownerAddress = "";
+        String ownerCity = "";
         String ownerProfileImageUrl = "";
 
         if (owner != null) {
@@ -93,6 +94,7 @@ public class TradeItemService {
             ownerEmail = owner.getEmail();
             ownerPhone = owner.getPhone();
             ownerAddress = (owner.getAddress() != null) ? owner.getAddress() : "";
+            ownerCity = owner.getCity();
 
             Optional<UserProfileImage> upiOpt = userProfileImageRepo.findByUserId(owner.getUserId());
             if (upiOpt.isPresent()) {
@@ -117,6 +119,7 @@ public class TradeItemService {
                 .ownerEmail(ownerEmail)
                 .ownerPhone(ownerPhone)
                 .ownerAddress(ownerAddress)
+                .ownerCity(ownerCity)
                 .ownerProfileImage(ownerProfileImageUrl)
                 .build();
     }

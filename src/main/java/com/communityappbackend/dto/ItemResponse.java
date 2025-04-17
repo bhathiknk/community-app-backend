@@ -26,6 +26,8 @@ public class ItemResponse {
     private String ownerEmail;
     private String ownerPhone;
     private String ownerAddress;
+    private String ownerCity;
+    private String ownerState;
 
     // NEW: Owner's profile image URL
     private String ownerProfileImage;
