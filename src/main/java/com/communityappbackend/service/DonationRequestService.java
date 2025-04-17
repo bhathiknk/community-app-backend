@@ -1,15 +1,14 @@
 package com.communityappbackend.service;
 
 import com.communityappbackend.dto.*;
-import com.communityappbackend.exception.*;
 import com.communityappbackend.model.*;
 import com.communityappbackend.model.DonationRequest;
 import com.communityappbackend.repository.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
-import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 @Service
@@ -167,5 +166,54 @@ public class DonationRequestService {
         }
         request.setStatus("REJECTED");
         return donationRequestRepo.save(request);
+    }
+
+
+
+    /**
+     * Return all requests _sent_ by the current user, with donation + receiver info.
+     */
+    public List<DonationRequestSentViewDTO> getSentDonationRequestsView(Authentication auth) {
+        User me = (User) auth.getPrincipal();
+        List<DonationRequest> sent = donationRequestRepo.findByRequestedBy(me.getUserId());
+        return sent.stream().map(this::toSentViewDTO).collect(Collectors.toList());
+    }
+
+    private DonationRequestSentViewDTO toSentViewDTO(DonationRequest req) {
+        DonationItem donation = donationItemRepo.findById(req.getDonationId()).orElse(null);
+        // build donation fields
+        String title = donation != null ? donation.getTitle() : "Unknown";
+        List<String> images = donation != null
+                ? donation.getImages().stream()
+                .map(img -> {
+                    String fn = img.getImagePath().replace("Donations/", "");
+                    return "http://10.0.2.2:8080/api/donations/image/"+fn;
+                }).toList()
+                : List.of();
+        String dStatus = donation != null ? donation.getStatus() : "";
+        // receiver = donation owner
+        User owner = donation != null ? userRepo.findById(donation.getOwnerId()).orElse(null) : null;
+        String rId = owner!=null?owner.getUserId():"";
+        String rName=owner!=null?owner.getFullName():"";
+        String rEmail=owner!=null?owner.getEmail():"";
+        String rPhone=owner!=null?owner.getPhone():"";
+        AtomicReference<String> rProf= new AtomicReference<>("");
+        if(owner!=null){
+            userProfileImageRepo.findByUserId(owner.getUserId()).ifPresent(upi->
+                    rProf.set("http://10.0.2.2:8080/image/" + upi.getImagePath()));
+        }
+        return DonationRequestSentViewDTO.builder()
+                .requestId(req.getRequestId())
+                .donationId(req.getDonationId())
+                .donationTitle(title)
+                .donationImages(images)
+                .donationStatus(dStatus)
+                .message(req.getMessage())
+                .status(req.getStatus())
+                .createdAt(req.getCreatedAt())
+                .receiverId(rId).receiverFullName(rName)
+                .receiverEmail(rEmail).receiverPhone(rPhone)
+                .receiverProfile(String.valueOf(rProf))
+                .build();
     }
 }
