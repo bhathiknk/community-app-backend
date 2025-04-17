@@ -1,10 +1,12 @@
 package com.communityappbackend.controller;
 
+import com.communityappbackend.dto.DonationCompleteDTO;
 import com.communityappbackend.dto.DonationRequestDTO;
 import com.communityappbackend.dto.DonationRequestSentViewDTO;
 import com.communityappbackend.dto.DonationRequestViewDTO;
 import com.communityappbackend.model.DonationRequest;
 import com.communityappbackend.service.DonationRequestService;
+import com.communityappbackend.service.RatingService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -16,9 +18,11 @@ import java.util.List;
 public class DonationRequestController {
 
     private final DonationRequestService donationRequestService;
+    private final RatingService ratingService;
 
-    public DonationRequestController(DonationRequestService donationRequestService) {
+    public DonationRequestController(DonationRequestService donationRequestService,RatingService ratingService) {
         this.donationRequestService = donationRequestService;
+        this.ratingService  = ratingService;
     }
 
     /** Create a new donation request */
@@ -65,5 +69,23 @@ public class DonationRequestController {
     ) {
         DonationRequest req = donationRequestService.rejectDonationRequest(requestId, auth);
         return ResponseEntity.ok(req);
+    }
+    @PostMapping("/{requestId}/complete")
+    public ResponseEntity<DonationRequest> complete(
+            @PathVariable String requestId,
+            Authentication auth
+    ) {
+        return ResponseEntity.ok(
+                donationRequestService.completeDonation(requestId, auth)
+        );
+    }
+
+    @GetMapping("/complete/{requestId}")
+    public ResponseEntity<DonationCompleteDTO> details(
+            @PathVariable String requestId
+    ) {
+        return ResponseEntity.ok(
+                donationRequestService.getCompleteDetails(requestId)
+        );
     }
 }

@@ -216,4 +216,60 @@ public class DonationRequestService {
                 .receiverProfile(String.valueOf(rProf))
                 .build();
     }
+
+    // — Mark donation complete
+    public DonationRequest completeDonation(String requestId, Authentication auth) {
+        DonationRequest req = donationRequestRepo.findById(requestId)
+                .orElseThrow(() -> new RuntimeException("Request not found"));
+
+        String currentUser = ((User) auth.getPrincipal()).getUserId();
+        if (!currentUser.equals(req.getRequestedBy())) {
+            throw new RuntimeException("Not authorized");
+        }
+
+        // Fix: fetch the DonationItem via donationItemRepo, not the Image repo
+        DonationItem item = donationItemRepo.findById(req.getDonationId())
+                .orElseThrow(() -> new RuntimeException("Donation not found"));
+
+        item.setStatus("DONATED");
+        donationItemRepo.save(item);        // <-- save back to donationItemRepo
+
+        req.setStatus("COMPLETED");
+        return donationRequestRepo.save(req);
+    }
+
+    // — Fetch details for completion screen
+    public DonationCompleteDTO getCompleteDetails(String requestId) {
+        DonationRequest req = donationRequestRepo.findById(requestId)
+                .orElseThrow(() -> new RuntimeException("Request not found"));
+
+        // Likewise, fetch item via donationItemRepo
+        DonationItem item = donationItemRepo.findById(req.getDonationId())
+                .orElseThrow(() -> new RuntimeException("Donation not found"));
+
+        User donor = userRepo.findById(item.getOwnerId())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        List<String> images = item.getImages().stream()
+                .map(img -> {
+                    String fn = img.getImagePath().replace("Donations/","");
+                    return "http://10.0.2.2:8080/api/donations/image/" + fn;
+                }).collect(Collectors.toList());
+
+        String profileUrl = userProfileImageRepo
+                .findByUserId(donor.getUserId())
+                .map(upi -> "http://10.0.2.2:8080/image/" + upi.getImagePath())
+                .orElse("");
+
+        return DonationCompleteDTO.builder()
+                .donationId(item.getDonationId())
+                .title(item.getTitle())
+                .images(images)
+                .donorId(donor.getUserId())
+                .donorFullName(donor.getFullName())
+                .donorEmail(donor.getEmail())
+                .donorPhone(donor.getPhone())
+                .donorProfileImage(profileUrl)
+                .build();
+    }
 }

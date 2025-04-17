@@ -64,6 +64,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/donations/add").authenticated()
                         .requestMatchers("/api/donations/**").authenticated()
 
+                        .requestMatchers("/api/ratings/**").authenticated()
+
 
                         // user endpoints
                         .requestMatchers("/api/user/**").authenticated()
