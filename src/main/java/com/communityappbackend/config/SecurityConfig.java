@@ -67,6 +67,9 @@ public class SecurityConfig {
 
                         .requestMatchers("/api/ratings/**").authenticated()
                         .requestMatchers("/api/ratings/me/**").authenticated()
+                        .requestMatchers("/api/ratings/me/detailed").authenticated()
+                        .requestMatchers("/api/ratings/me/received").authenticated()
+
 
 
                         // user endpoints
