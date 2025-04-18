@@ -2,6 +2,7 @@
 package com.communityappbackend.controller;
 
 import com.communityappbackend.dto.RatingDTO;
+import com.communityappbackend.dto.RatingSummaryDTO;
 import com.communityappbackend.model.Rating;
 import com.communityappbackend.service.RatingService;
 import org.springframework.http.ResponseEntity;
@@ -36,5 +37,12 @@ public class RatingController {
     @GetMapping("/user/{userId}")
     public ResponseEntity<List<Rating>> getForUser(@PathVariable String userId) {
         return ResponseEntity.ok(service.getForUser(userId));
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<RatingSummaryDTO> getMySummary(Authentication auth) {
+        User me = (User) auth.getPrincipal();
+        RatingSummaryDTO summary = service.summaryForUser(me.getUserId());
+        return ResponseEntity.ok(summary);
     }
 }

@@ -3,6 +3,7 @@ package com.communityappbackend.config;
 import com.communityappbackend.security.JwtAuthFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.*;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -65,6 +66,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/donations/**").authenticated()
 
                         .requestMatchers("/api/ratings/**").authenticated()
+                        .requestMatchers("/api/ratings/me/**").authenticated()
 
 
                         // user endpoints

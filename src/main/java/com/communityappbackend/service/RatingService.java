@@ -2,6 +2,7 @@
 package com.communityappbackend.service;
 
 import com.communityappbackend.dto.RatingDTO;
+import com.communityappbackend.dto.RatingSummaryDTO;
 import com.communityappbackend.model.DonationRequest;
 import com.communityappbackend.model.DonationItem;
 import com.communityappbackend.model.Rating;
@@ -58,4 +59,16 @@ public class RatingService {
     public List<Rating> getForUser(String userId) {
         return ratingRepo.findByRateeId(userId);
     }
+
+
+    public RatingSummaryDTO summaryForUser(String userId) {
+        List<Rating> all = ratingRepo.findByRateeId(userId);
+        double avg = all.stream().mapToInt(Rating::getScore).average().orElse(0.0);
+        return RatingSummaryDTO.builder()
+                .average(Math.round(avg * 10) / 10.0)  // one decimal
+                .count(all.size())
+                .build();
+    }
+
+
 }
